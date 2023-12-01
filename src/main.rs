@@ -11,7 +11,7 @@ async fn respond_internal_server_error() -> (StatusCode, &'static str) {
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
-        .route("/:num1/:num2", get(xor_pow_three))
+        .route("/1/:num1/:num2", get(xor_pow_three))
         .route("/-1/error", get(respond_internal_server_error));
 
     Ok(router.into())
