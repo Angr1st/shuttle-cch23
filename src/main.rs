@@ -1,7 +1,7 @@
-use axum::{http::StatusCode, routing::get, Router};
+use axum::{extract::Path, http::StatusCode, response::IntoResponse, routing::get, Router};
 
-async fn hello_world() -> &'static str {
-    "Hello, world!"
+async fn xor_pow_three(Path((num1, num2)): Path<(i32, i32)>) -> impl IntoResponse {
+    (num1 ^ num2).pow(3).to_string()
 }
 
 async fn respond_internal_server_error() -> (StatusCode, &'static str) {
@@ -11,7 +11,7 @@ async fn respond_internal_server_error() -> (StatusCode, &'static str) {
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
-        .route("/", get(hello_world))
+        .route("/:num1/:num2", get(xor_pow_three))
         .route("/-1/error", get(respond_internal_server_error));
 
     Ok(router.into())
