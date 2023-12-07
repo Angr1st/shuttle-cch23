@@ -1,4 +1,5 @@
 use axum::{
+    body::Body,
     extract::Path,
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -141,6 +142,23 @@ async fn cursed_candy_eating_contest(
     }))
 }
 
+#[derive(Serialize)]
+struct ElfCounter {
+    elf: usize,
+    #[serde(name = "elf on a shelf")]
+    elf_on_a_shelf: Option<usize>,
+    #[serde(name = "shelf with no elf on it")]
+    shelf_with_no_elf: Option<usize>,
+}
+
+impl Default for ElfCounter {}
+
+async fn elf_counter(body: String) -> Json<ElfCounter> {
+    Json(ElfCounter {
+        elf: body.matches("elf").count(),
+    })
+}
+
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
@@ -149,6 +167,7 @@ async fn main() -> shuttle_axum::ShuttleAxum {
         .route("/1/:num1/:num2/*rest", get(sled_id))
         .route("/4/strength", post(reindeer_cheer))
         .route("/4/contest", post(cursed_candy_eating_contest))
+        .route("/6", post(elf_counter))
         .route("/-1/error", get(respond_internal_server_error));
 
     Ok(router.into())
