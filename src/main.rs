@@ -1,11 +1,12 @@
 use axum::{
     body::Body,
     extract::Path,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
 
 struct AppError {}
@@ -154,16 +155,6 @@ struct ElfCounter {
     shelf_with_no_elf: Option<usize>,
 }
 
-impl Default for ElfCounter {
-    fn default() -> Self {
-        Self {
-            elf: 0,
-            elf_on_a_shelf: None,
-            shelf_with_no_elf: None,
-        }
-    }
-}
-
 async fn elf_counter(body: String) -> Json<ElfCounter> {
     let elf = body.matches("elf").count();
     let elf_on_a_shelf = body.matches("elf on a shelf").count();
@@ -196,6 +187,19 @@ async fn elf_counter(body: String) -> Json<ElfCounter> {
     })
 }
 
+async fn get_cookie_recipie(headers: HeaderMap) -> impl IntoResponse {
+    let header = headers.get("Cookie");
+    if header.is_some() {
+        let header = header.unwrap();
+        let decoded = general_purpose::STANDARD
+            .decode(header.to_str().unwrap().split_at(6).0)
+            .unwrap();
+        let decoded_string = String::from_utf8(decoded);
+        return decoded_string.unwrap().into_response();
+    }
+    return "error".into_response();
+}
+
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
@@ -205,6 +209,7 @@ async fn main() -> shuttle_axum::ShuttleAxum {
         .route("/4/strength", post(reindeer_cheer))
         .route("/4/contest", post(cursed_candy_eating_contest))
         .route("/6", post(elf_counter))
+        .route("/7/decode", get(get_cookie_recipie))
         .route("/-1/error", get(respond_internal_server_error));
 
     Ok(router.into())
