@@ -145,17 +145,54 @@ async fn cursed_candy_eating_contest(
 #[derive(Serialize)]
 struct ElfCounter {
     elf: usize,
-    #[serde(name = "elf on a shelf")]
+    #[serde(rename = "elf on a shelf", skip_serializing_if = "Option::is_none")]
     elf_on_a_shelf: Option<usize>,
-    #[serde(name = "shelf with no elf on it")]
+    #[serde(
+        rename = "shelf with no elf on it",
+        skip_serializing_if = "Option::is_none"
+    )]
     shelf_with_no_elf: Option<usize>,
 }
 
-impl Default for ElfCounter {}
+impl Default for ElfCounter {
+    fn default() -> Self {
+        Self {
+            elf: 0,
+            elf_on_a_shelf: None,
+            shelf_with_no_elf: None,
+        }
+    }
+}
 
 async fn elf_counter(body: String) -> Json<ElfCounter> {
+    let elf = body.matches("elf").count();
+    let elf_on_a_shelf = body.matches("elf on a shelf").count();
+    let elf_on_a_shelf = if elf_on_a_shelf == 0 {
+        None
+    } else {
+        Some(elf_on_a_shelf)
+    };
+    let shelf_with_no_elf_matches: Vec<(usize, &str)> = body.match_indices("shelf").collect();
+    let mut shelf_with_no_elf = 0;
+    for shelf in shelf_with_no_elf_matches {
+        let Some(index_before) = shelf.0.checked_sub(9) else {
+            continue;
+        };
+        if &body[index_before..shelf.0] == "elf on a " {
+            continue;
+        } else {
+            shelf_with_no_elf = shelf_with_no_elf + 1;
+        }
+    }
+    let shelf_with_no_elf = if shelf_with_no_elf == 0 {
+        None
+    } else {
+        Some(shelf_with_no_elf)
+    };
     Json(ElfCounter {
-        elf: body.matches("elf").count(),
+        elf,
+        elf_on_a_shelf,
+        shelf_with_no_elf,
     })
 }
 
