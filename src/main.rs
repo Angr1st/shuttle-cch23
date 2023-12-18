@@ -8,6 +8,7 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 struct AppError {}
 
@@ -156,6 +157,7 @@ struct ElfCounter {
 }
 
 async fn elf_counter(body: String) -> Json<ElfCounter> {
+    info!("{}", &body);
     let elf = body.matches("elf").count();
     let elf_on_a_shelf = body.matches("elf on a shelf").count();
     let elf_on_a_shelf = if elf_on_a_shelf == 0 {
