@@ -33,6 +33,10 @@ impl IntoResponse for AppError {
 //    }
 //}
 
+async fn ok_response() -> impl IntoResponse {
+    StatusCode::OK
+}
+
 async fn pow_three(Path(num1): Path<i32>) -> impl IntoResponse {
     num1.pow(3).to_string()
 }
@@ -82,7 +86,7 @@ async fn reindeer_cheer(Json(reindeers): Json<Vec<Reindeer>>) -> impl IntoRespon
         .to_string()
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct ReindeerDetails {
     name: String,
     strength: u32,
@@ -106,6 +110,10 @@ struct ReindeerChallengeResponse {
 async fn cursed_candy_eating_contest(
     Json(reindeers): Json<Vec<ReindeerDetails>>,
 ) -> Result<Json<ReindeerChallengeResponse>, AppError> {
+    info!("Started cursed candy eating contest!");
+    for reindeer in reindeers.iter() {
+        info!("{:?}", reindeer)
+    }
     let fastest = reindeers
         .iter()
         .map(|deer| {
@@ -115,18 +123,22 @@ async fn cursed_candy_eating_contest(
         })
         .max_by_key(|deer| deer.1)
         .ok_or(AppError::new())?;
+    info!("Fastest: {}", fastest.0.name);
     let tallest = reindeers
         .iter()
         .max_by_key(|deer| deer.height)
         .ok_or(AppError::new())?;
+    info!("Tallest: {}", tallest.name);
     let magician = reindeers
         .iter()
         .max_by_key(|deer| deer.snow_magic_power)
         .ok_or(AppError::new())?;
+    info!("Magician: {}", magician.name);
     let consumer = reindeers
         .iter()
         .max_by_key(|deer| deer.candies_eaten_yesterday)
         .ok_or(AppError::new())?;
+    info!("Consumer: {}", consumer.name);
     Ok(Json::from(ReindeerChallengeResponse {
         fastest: format!(
             "Speeding past the finish line with a strength of {} is {}",
@@ -140,7 +152,10 @@ async fn cursed_candy_eating_contest(
             "{} could blast you away with a snow magic power of {}",
             magician.name, magician.snow_magic_power
         ),
-        consumer: format!("{} ate lots of candies, but also some grass", consumer.name),
+        consumer: format!(
+            "{} ate lots of candies, but also some {}",
+            consumer.name, consumer.favorite_food
+        ),
     }))
 }
 
@@ -168,16 +183,23 @@ async fn elf_counter(body: String) -> Json<ElfCounter> {
     let shelf_with_no_elf_matches: Vec<(usize, &str)> = body.match_indices("shelf").collect();
     let mut shelf_with_no_elf = 0;
     for shelf in shelf_with_no_elf_matches {
-        let Some(index_before) = shelf.0.checked_sub(9) else {
+        //let space_before = shelf.0.checked_sub(10);
+        //if let Some(index_space_before) = space_before {
+        //    if &body[index_space_before..shelf.0] == " elf on a " {
+        //        continue;
+        //    }
+        //}
+        let Some(index_before) = shelf.0.checked_sub(10) else {
             continue;
         };
-        if &body[index_before..shelf.0] == "elf on a " {
+        info!("{}", &body[index_before..shelf.0]);
+        if &body[index_before..shelf.0] == " elf on a " {
             continue;
         } else {
             shelf_with_no_elf = shelf_with_no_elf + 1;
         }
     }
-    let shelf_with_no_elf = if shelf_with_no_elf == 0 {
+    let shelf_with_no_elf = if elf_on_a_shelf.is_none() && shelf_with_no_elf == 0 {
         None
     } else {
         Some(shelf_with_no_elf)
@@ -205,6 +227,7 @@ async fn get_cookie_recipie(headers: HeaderMap) -> impl IntoResponse {
 #[shuttle_runtime::main]
 async fn main() -> shuttle_axum::ShuttleAxum {
     let router = Router::new()
+        .route("/", get(ok_response))
         .route("/1/:num1", get(pow_three))
         .route("/1/:num1/:num2", get(xor_pow_three))
         .route("/1/:num1/:num2/*rest", get(sled_id))
